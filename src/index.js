@@ -1,13 +1,15 @@
 import React from 'react';
 import { render } from 'react-dom';
-import { Provider } from 'react-redux';
+import { PostsBySubredditProvider } from './contexts/PostsBySubredditContext'
+import { SelectedSubredditProvider } from './contexts/SelectedSubredditContext'
 
 import App from './App';
-import store from './store';
 
 render(
-  <Provider store={store}>
-    <App />
-  </Provider>,
+  <PostsBySubredditProvider>
+    <SelectedSubredditProvider>
+      <App />
+    </SelectedSubredditProvider>
+  </PostsBySubredditProvider>,
   document.getElementById('root'),
 );

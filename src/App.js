@@ -1,39 +1,36 @@
-// src/App.js
-
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { connect } from 'react-redux';
 
-import { selectSubreddit, fetchPostsIfNeeded, refreshSubreddit } from './actions';
 import Posts from './components/Posts';
 import Selector from './components/Selector';
 
+import { SelectedSubredditConsumer } from './contexts/SelectedSubredditContext';
+import { PostsBySubredditConsumer } from './contexts/PostsBySubredditContext';
+
 class App extends Component {
   componentDidMount() {
-    const { dispatch, selectedSubreddit } = this.props;
-    dispatch(fetchPostsIfNeeded(selectedSubreddit));
+    const { selectedSubreddit, fetchPostsIfNeeded } = this.props;
+    fetchPostsIfNeeded(selectedSubreddit)
   }
 
   componentDidUpdate(prevProps) {
-    const { props } = this;
-
-    if (prevProps.selectedSubreddit !== props.selectedSubreddit) {
-      const { dispatch, selectedSubreddit } = props;
-      dispatch(fetchPostsIfNeeded(selectedSubreddit));
+    if (prevProps.selectedSubreddit !== this.props.selectedSubreddit) {
+      const { selectedSubreddit, fetchPostsIfNeeded } = this.props;
+      fetchPostsIfNeeded(selectedSubreddit);
     }
   }
 
   selectSubreddit(nextSubreddit) {
-    const { dispatch } = this.props;
-    dispatch(selectSubreddit(nextSubreddit));
+    const { selectSubreddit } = this.props;
+    selectSubreddit(nextSubreddit);
   }
 
-  handleRefreshClick(event) {
+  async handleRefreshClick(event) {
     event.preventDefault();
 
-    const { dispatch, selectedSubreddit } = this.props;
-    dispatch(refreshSubreddit(selectedSubreddit));
-    dispatch(fetchPostsIfNeeded(selectedSubreddit));
+    const { refreshSubreddit, fetchPostsIfNeeded, selectedSubreddit } = this.props;
+    await refreshSubreddit(selectedSubreddit);
+    fetchPostsIfNeeded(selectedSubreddit);
   }
 
   renderLastUpdatedAt() {
@@ -86,22 +83,8 @@ class App extends Component {
   }
 }
 
-const mapStateToProps = (state) => {
-  const { selectedSubreddit, postsBySubreddit } = state;
-  const { isFetching, lastUpdated, items: posts } = postsBySubreddit[selectedSubreddit];
-
-  return {
-    selectedSubreddit,
-    posts,
-    isFetching,
-    lastUpdated,
-    availableSubreddits: Object.keys(postsBySubreddit),
-  };
-};
-
 App.propTypes = {
   availableSubreddits: PropTypes.arrayOf(PropTypes.string.isRequired).isRequired,
-  dispatch: PropTypes.func.isRequired,
   isFetching: PropTypes.bool.isRequired,
   lastUpdated: PropTypes.number,
   posts: PropTypes.arrayOf(
@@ -118,4 +101,32 @@ App.defaultProps = {
   posts: [],
 };
 
-export default connect(mapStateToProps)(App);
+//Source: https://stackoverflow.com/questions/49809884/access-react-context-outside-of-render-function
+export default (props) => (
+  <SelectedSubredditConsumer>
+    { (subredditProps) => (
+      <PostsBySubredditConsumer>
+        { (postsProps) => {
+          const { postsBySubreddit, availableSubreddits } = postsProps;
+          const { selectedSubreddit, selectSubreddit } = subredditProps;
+          const currentSubreddit = postsBySubreddit[selectedSubreddit];
+          const { isFetching, lastUpdated, items: posts } = currentSubreddit;
+          return (
+            <App {
+              ...{
+                ...props,
+                ...postsProps,
+                selectSubreddit,
+                selectedSubreddit,
+                posts,
+                isFetching,
+                lastUpdated,
+                availableSubreddits,
+              }
+            } />
+          )
+        }}
+      </PostsBySubredditConsumer>
+    ) }
+  </SelectedSubredditConsumer>
+);
